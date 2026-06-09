@@ -36,8 +36,8 @@
 
 - 需求函数：$Q_i = A - B\,p_i + \gamma\,(p_j + p_k)$
 - 利润函数：$\pi_i = (p_i - c_i)\,Q_i$
-- 反应函数：$p_i = \dfrac{A}{4} + \dfrac{c_i}{2} + \dfrac{\gamma}{2B}\,(p_j + p_k)$
-  （本例即 $p_i = 2.5 + c_i/2 + 0.25\,(p_j + p_k)$）
+- 反应函数：$p_i = \dfrac{A}{2B} + \dfrac{c_i}{2} + \dfrac{\gamma}{2B}\,(p_j + p_k)$
+  （本例 $A=10,\ B=2,\ \gamma=1$ 即 $p_i = 2.5 + c_i/2 + 0.25\,(p_j + p_k)$）
 
 ### 期望均衡结果（用于验证）
 
@@ -66,12 +66,16 @@ bertrand-llm-pricing-game/
 │   ├── run_dynamics.py
 │   ├── run_deviation.py
 │   └── run_comparative.py
-├── outputs/                   # 仿真图表输出（已 gitignore，保留 .gitkeep）
+├── outputs/                   # 仿真图表输出（*.png 已 gitignore，保留 .gitkeep）
+│   ├── dynamics.png           #   ← run_dynamics.py 生成
+│   ├── deviation.png          #   ← run_deviation.py 生成
+│   ├── comparative_cost.png   #   ← run_comparative.py 生成
+│   └── comparative_gamma.png  #   ← run_comparative.py 生成
 ├── docs/
 │   ├── model.md               # 模型数学推导记录
-│   └── results.md             # 仿真结果记录
+│   └── results.md             # 仿真结果记录（含 γ 扫描与建模说明的矛盾分析）
 └── tests/
-    └── test_model.py          # 单元测试（验证均衡解与期望值一致）
+    └── test_model.py          # 单元测试（均衡解 / 反应动态 / 偏离 / 比较静态）
 ```
 
 ## 环境搭建
@@ -102,20 +106,65 @@ uv 会自动按 `.python-version` 创建虚拟环境（`.venv/`）并安装依�
 
 ## 运行各仿真
 
-> 脚本通过 `uv run` 在项目环境中运行，无需手动激活虚拟环境。
+> 脚本通过 `uv run` 在项目环境中运行，无需手动激活虚拟环境。每个脚本都**先把
+> 关键数值打印到终端**（与期望值 / 理论值对照），再把图保存到 `outputs/`，
+> 因此不看图也能验证结论。绘图使用非交互后端（Agg），不弹任何窗口；图内文字
+> 统一英文以规避中文字体缺失导致的乱码。
 
-| 仿真 | 命令 | 预期输出 |
+| 仿真 | 命令 | 产出图片 |
 | --- | --- | --- |
-| 1. 纳什均衡 | `uv run python scripts/run_equilibrium.py` | 终端打印均衡价格 / 需求 / 利润，并与期望值逐项对照 |
-| 2. 最优反应动态 | `uv run python scripts/run_dynamics.py` | 终端打印收敛信息，`outputs/` 生成价格收敛轨迹图 |
-| 3. 单边偏离检验 | `uv run python scripts/run_deviation.py` | 终端打印利润峰值价格 vs $p_i^*$，`outputs/` 生成利润曲线图 |
-| 4. 比较静态分析 | `uv run python scripts/run_comparative.py` | 终端打印趋势，`outputs/` 生成 $c_i$ / $\gamma$ 扫描图 |
+| 1. 纳什均衡 | `uv run python scripts/run_equilibrium.py` | （无图，纯打印） |
+| 2. 最优反应动态 | `uv run python scripts/run_dynamics.py` | `outputs/dynamics.png` |
+| 3. 单边偏离检验 | `uv run python scripts/run_deviation.py` | `outputs/deviation.png` |
+| 4. 比较静态分析 | `uv run python scripts/run_comparative.py` | `outputs/comparative_cost.png`、`outputs/comparative_gamma.png` |
+
+### 1. 纳什均衡（解析解）
+
+求解 3×3 线性方程组得均衡，并与 `EXPECTED_*` 逐项对照、报告最大误差：
+
+```text
+quantity          OpenAI   Anthropic      Google     max err
+price  p*         7.3800      7.5400      6.9800    8.88e-16
+demand Q*         9.7600      9.2800     10.9600    1.78e-15
+profit pi*       47.6288     43.0592     60.0608    1.20e-03
+```
+
+### 2. 最优反应动态
+
+从任意初值（默认全 0）同步迭代，约 31 轮收敛到 $p^*$，验证均衡是稳定吸引子：
+
+```text
+converged      : True
+iterations     : 31
+final prices   : [7.38 7.54 6.98]
+distance to p* : 5.89e-09
+```
+
+### 3. 单边偏离检验
+
+固定其余两家于均衡价，扫描某家价格，利润峰值落在其 $p_i^*$，证明无单边偏离激励：
+
+```text
+firm          numeric best     theory p*   peak profit
+OpenAI               7.380         7.380        47.629
+Anthropic            7.537         7.540        43.059
+Google               6.982         6.980        60.061
+```
+
+### 4. 比较静态分析
+
+- **扫成本 $c_i$**：自身成本上升 ⟹ 自身均衡价上升、利润下降（符合预期）。
+- **扫差异化 $\gamma$**：⚠️ 实测结果显示 $\gamma$ 越大，均衡价 / 利润越**爆炸式上升**，
+  并在 $\gamma = B$ 处奇异发散 —— 这与建模说明「差异化打破零利润悖论」的预期
+  **相反**。$\gamma$ 图因此采用对数纵轴并标注 $\gamma=B$ 奇异线。详细数值、根因
+  分析与处理见 [`docs/results.md`](docs/results.md)。
 
 ## 结果验证
 
 - **解析解** 与建模组给定的期望值对照（见上「期望均衡结果」）；
-- 单元测试断言 `solve_equilibrium()` 的结果在容差内等于 `config.py` 中的
-  `EXPECTED_PRICES / EXPECTED_QUANTITIES / EXPECTED_PROFITS`：
+- 单元测试（共 8 项）覆盖：解析均衡价 / 需求 / 利润与 `EXPECTED_*` 一致、反应
+  动态收敛到 $p^*$、单边偏离峰值落在 $p_i^*$、成本扫描单调性、$\gamma=1$ 复现
+  均衡及 $\gamma$ 扫描的真实趋势：
 
 ```bash
 uv run pytest
