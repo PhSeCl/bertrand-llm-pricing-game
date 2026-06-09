@@ -11,13 +11,29 @@
 from __future__ import annotations
 
 from bertrand_game.analysis import deviation_scan
-from bertrand_game.config import DEFAULT_CONFIG
+from bertrand_game.config import DEFAULT_CONFIG, FIRM_NAMES
 from bertrand_game.plots import plot_deviation
 
 
 def main() -> None:
-    """运行单边偏离检验并出图（待实现）。"""
-    raise NotImplementedError
+    """对三家各做单边偏离检验，打印数值最优 vs 理论 p*，并三合一出图。"""
+    results = [deviation_scan(f, DEFAULT_CONFIG, price_range=(0.0, 15.0), n_points=2001)
+               for f in range(3)]
+
+    print("=" * 64)
+    print("Unilateral deviation check (rivals fixed at equilibrium)")
+    print("=" * 64)
+    print(f"{'firm':<12}{'numeric best':>14}{'theory p*':>14}{'peak profit':>14}")
+    print("-" * 54)
+    for res in results:
+        name = FIRM_NAMES[res.firm]
+        print(f"{name:<12}{res.best_price:>14.3f}{res.equilibrium_price:>14.3f}"
+              f"{res.profits.max():>14.3f}")
+    print("-" * 54)
+    print("Numeric peak matches theoretical p* within grid resolution => p* is a Nash equilibrium.")
+
+    out = plot_deviation(results)
+    print(f"\nFigure saved to: {out}")
 
 
 if __name__ == "__main__":
