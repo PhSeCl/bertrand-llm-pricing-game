@@ -21,7 +21,9 @@
 
 $$Q_i = A - B\,p_i + \gamma\,(p_j + p_k)$$
 
-（待补充：推导与经济含义说明）
+经济含义：$-Bp_i$ 表示自身提价导致需求下降，$+\gamma(p_j+p_k)$ 表示竞品提价时
+部分客户转向本厂；$\gamma < B$ 表示交叉价格效应弱于自价格效应，体现产品差异化
+（客户不会因微小价差全部流失）。
 
 ## 3. 利润函数
 
@@ -29,22 +31,35 @@ $$\pi_i = (p_i - c_i)\,Q_i$$
 
 ## 4. 反应函数
 
-对 $\pi_i$ 关于 $p_i$ 求一阶条件 $\partial \pi_i/\partial p_i = 0$，得：
+对 $\pi_i = (p_i - c_i)\big(A - Bp_i + \gamma(p_j+p_k)\big)$ 关于 $p_i$ 求一阶条件
+$\partial \pi_i/\partial p_i = 0$：
 
-$$p_i = \frac{A}{4} + \frac{c_i}{2} + \frac{\gamma}{2B}\,(p_j + p_k)$$
+$$\frac{\partial \pi_i}{\partial p_i} = \big(A - Bp_i + \gamma(p_j+p_k)\big) + (p_i - c_i)(-B) = 0$$
+
+$$\Rightarrow A + Bc_i + \gamma(p_j+p_k) - 2Bp_i = 0$$
+
+$$\Rightarrow p_i = \frac{A}{2B} + \frac{c_i}{2} + \frac{\gamma}{2B}(p_j+p_k)$$
+
+二阶条件：$\partial^2\pi_i/\partial p_i^2 = -2B < 0$，故一阶条件给出的是利润最大值点。
 
 本例参数下：$p_i = 2.5 + c_i/2 + 0.25\,(p_j + p_k)$。
 
-（待补充：一阶条件推导过程）
-
 ## 5. 纳什均衡求解
 
-将三条反应函数联立为线性方程组 $M\mathbf{p} = \mathbf{b}$ 求解。
+将通式两边乘 $2B$ 整理得 $2Bp_i - \gamma(p_j+p_k) = A + Bc_i$，三式联立为
+$M\mathbf{p} = \mathbf{b}$。代入 $A=10,\ B=2,\ \gamma=1$：
 
-（待补充：方程组矩阵形式与解的存在唯一性条件）
+$$M = \begin{pmatrix} 4 & -1 & -1 \\ -1 & 4 & -1 \\ -1 & -1 & 4 \end{pmatrix}, \quad \mathbf{b} = \begin{pmatrix} A+Bc_1 \\ A+Bc_2 \\ A+Bc_3 \end{pmatrix} = \begin{pmatrix} 15.0 \\ 15.8 \\ 13.0 \end{pmatrix}$$
+
+存在唯一性：一般地 $\det(M) = (2B-2\gamma)(2B+\gamma)^2$，当 $\gamma < B$ 时
+$\det(M)\neq 0$，方程组有唯一解；$\gamma \to B$ 时矩阵奇异、解发散（这与比较静态中
+γ 扫描的发散现象一致）。代码用 `numpy.linalg.solve(M, b)` 求解。
 
 ## 6. 期望均衡结果（用于验证）
 
 - $p^* \approx (7.38,\ 7.54,\ 6.98)$
 - $Q^* \approx (9.76,\ 9.28,\ 10.96)$
 - $\pi^* \approx (47.63,\ 43.06,\ 60.06)$
+
+注：以上为保留两位小数的四舍五入值；`tests/test_model.py` 中以 $\text{atol}\approx 0.01$
+对解析解进行断言验证。
