@@ -13,6 +13,8 @@ from dataclasses import dataclass
 import numpy as np
 
 from .config import BertrandConfig, DEFAULT_CONFIG
+from .model import profit
+from .solver import solve_equilibrium
 
 
 @dataclass
@@ -72,7 +74,26 @@ def deviation_scan(
     Returns:
         DeviationResult，包含价格网格、利润曲线及理论 / 数值最优价格。
     """
-    raise NotImplementedError
+    eq = solve_equilibrium(config)
+    eq_prices = eq.prices
+    equilibrium_price = float(eq_prices[firm])
+
+    price_grid = np.linspace(price_range[0], price_range[1], n_points)
+    profits = np.empty(n_points, dtype=float)
+    for idx, p_i in enumerate(price_grid):
+        # 固定其余两家于均衡价，只改 firm 自身价格
+        prices = eq_prices.copy()
+        prices[firm] = p_i
+        profits[idx] = profit(prices, config)[firm]
+
+    best_price = float(price_grid[int(np.argmax(profits))])
+    return DeviationResult(
+        firm=firm,
+        price_grid=price_grid,
+        profits=profits,
+        equilibrium_price=equilibrium_price,
+        best_price=best_price,
+    )
 
 
 def comparative_statics_cost(

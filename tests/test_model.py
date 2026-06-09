@@ -18,6 +18,7 @@ from bertrand_game.config import (
     EXPECTED_PROFITS,
     EXPECTED_QUANTITIES,
 )
+from bertrand_game.analysis import deviation_scan
 from bertrand_game.solver import best_response_dynamics, solve_equilibrium
 
 
@@ -45,3 +46,11 @@ def test_dynamics_converges_to_equilibrium() -> None:
     dyn = best_response_dynamics(np.zeros(3), DEFAULT_CONFIG)
     assert dyn.converged
     np.testing.assert_allclose(dyn.final_prices, eq.prices, atol=1e-6)
+
+
+def test_deviation_profit_peaks_at_equilibrium() -> None:
+    """单边偏离：固定其余两家于均衡价时，各厂利润峰值应落在自身均衡价 pᵢ*。"""
+    for firm in range(3):
+        res = deviation_scan(firm, DEFAULT_CONFIG, price_range=(0.0, 15.0), n_points=2001)
+        # 数值最优价应接近理论均衡价（受网格分辨率限制，容差取一个网格步长量级）
+        assert abs(res.best_price - res.equilibrium_price) < 1e-2
