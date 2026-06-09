@@ -18,7 +18,11 @@ from bertrand_game.config import (
     EXPECTED_PROFITS,
     EXPECTED_QUANTITIES,
 )
-from bertrand_game.analysis import deviation_scan
+from bertrand_game.analysis import (
+    comparative_statics_cost,
+    comparative_statics_gamma,
+    deviation_scan,
+)
 from bertrand_game.solver import best_response_dynamics, solve_equilibrium
 
 
@@ -54,3 +58,27 @@ def test_deviation_profit_peaks_at_equilibrium() -> None:
         res = deviation_scan(firm, DEFAULT_CONFIG, price_range=(0.0, 15.0), n_points=2001)
         # 数值最优价应接近理论均衡价（受网格分辨率限制，容差取一个网格步长量级）
         assert abs(res.best_price - res.equilibrium_price) < 1e-2
+
+
+def test_comparative_statics_cost_monotonic() -> None:
+    """扫成本：firm 自身成本上升，其均衡价应单调上升、均衡利润单调下降。"""
+    firm = 0
+    res = comparative_statics_cost(firm, DEFAULT_CONFIG, cost_range=(0.5, 5.0), n_points=50)
+    own_prices = res.prices[:, firm]
+    own_profits = res.profits[:, firm]
+    assert np.all(np.diff(own_prices) > 0)
+    assert np.all(np.diff(own_profits) < 0)
+
+
+def test_comparative_statics_gamma_reproduces_equilibrium_at_default() -> None:
+    """扫 γ：当扫描点取到默认 γ=1 时，应精确复现期望均衡价。"""
+    res = comparative_statics_gamma(DEFAULT_CONFIG, gamma_range=(1.0, 1.0), n_points=1)
+    np.testing.assert_allclose(res.prices[0], EXPECTED_PRICES, atol=1e-2)
+
+
+def test_comparative_statics_gamma_profit_increases_with_gamma() -> None:
+    """扫 γ：本需求形式下 γ↑ 反而使总利润单调上升（如实记录的真实趋势，
+    与建模说明「差异化打破零利润悖论」的预期相反，根因见 docs/results.md）。"""
+    res = comparative_statics_gamma(DEFAULT_CONFIG, gamma_range=(0.0, 1.9), n_points=50)
+    total_profit = res.profits.sum(axis=1)
+    assert np.all(np.diff(total_profit) > 0)

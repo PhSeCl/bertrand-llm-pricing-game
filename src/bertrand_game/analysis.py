@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
@@ -117,7 +117,25 @@ def comparative_statics_cost(
     Returns:
         ComparativeStaticsResult，记录均衡价格 / 利润随 cᵢ 的轨迹。
     """
-    raise NotImplementedError
+    param_grid = np.linspace(cost_range[0], cost_range[1], n_points)
+    prices = np.empty((n_points, 3), dtype=float)
+    profits = np.empty((n_points, 3), dtype=float)
+
+    base_costs = list(config.marginal_costs)
+    for idx, c_i in enumerate(param_grid):
+        costs = base_costs.copy()
+        costs[firm] = float(c_i)
+        cfg = replace(config, marginal_costs=tuple(costs))
+        eq = solve_equilibrium(cfg)
+        prices[idx] = eq.prices
+        profits[idx] = eq.profits
+
+    return ComparativeStaticsResult(
+        param_name=f"c{firm + 1}",
+        param_grid=param_grid,
+        prices=prices,
+        profits=profits,
+    )
 
 
 def comparative_statics_gamma(
@@ -141,4 +159,19 @@ def comparative_statics_gamma(
     Returns:
         ComparativeStaticsResult，记录均衡价格 / 利润随 γ 的轨迹。
     """
-    raise NotImplementedError
+    param_grid = np.linspace(gamma_range[0], gamma_range[1], n_points)
+    prices = np.empty((n_points, 3), dtype=float)
+    profits = np.empty((n_points, 3), dtype=float)
+
+    for idx, g in enumerate(param_grid):
+        cfg = replace(config, gamma=float(g))
+        eq = solve_equilibrium(cfg)
+        prices[idx] = eq.prices
+        profits[idx] = eq.profits
+
+    return ComparativeStaticsResult(
+        param_name="gamma",
+        param_grid=param_grid,
+        prices=prices,
+        profits=profits,
+    )
