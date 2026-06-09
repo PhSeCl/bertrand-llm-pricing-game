@@ -98,4 +98,24 @@ def best_response_dynamics(
     Returns:
         DynamicsResult，包含价格轨迹、是否收敛、迭代次数与最终价格。
     """
-    raise NotImplementedError
+    prices = np.asarray(initial_prices, dtype=float).copy()
+    history = [prices.copy()]
+    converged = False
+    n_iter = 0
+
+    for n_iter in range(1, max_iter + 1):
+        # 同步（Jacobi 式）更新：三家同时按上一轮对手价做最优反应
+        new_prices = best_response_all(prices, config)
+        history.append(new_prices.copy())
+        if np.linalg.norm(new_prices - prices) < tol:
+            prices = new_prices
+            converged = True
+            break
+        prices = new_prices
+
+    return DynamicsResult(
+        history=np.asarray(history),
+        converged=converged,
+        n_iter=n_iter,
+        final_prices=prices,
+    )

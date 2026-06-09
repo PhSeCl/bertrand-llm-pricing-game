@@ -39,7 +39,6 @@ def test_equilibrium_profits_match_expected() -> None:
     np.testing.assert_allclose(result.profits, EXPECTED_PROFITS, atol=1e-2)
 
 
-@pytest.mark.skip(reason="solver 尚未实现")
 def test_dynamics_converges_to_equilibrium() -> None:
     """最优反应动态从任意初始价格应收敛到解析均衡。"""
     eq = solve_equilibrium(DEFAULT_CONFIG)
